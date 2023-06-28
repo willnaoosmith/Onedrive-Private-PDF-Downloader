@@ -18,7 +18,8 @@ try:
 	sleep(1)
 
 	#Gets the total number of pages inside the file
-	totalOfPages = int(browser.find_element(By.XPATH, "//div[@class='status_719d330e']").text.replace("/", ""))
+	
+	totalOfPages = int(browser.find_element(By.CLASS_NAME, "status_719d330e").text.replace("/", ""))
 	counter = 1
 	
 	#Gets the filename
