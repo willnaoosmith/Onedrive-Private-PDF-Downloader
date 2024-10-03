@@ -1,3 +1,4 @@
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.common.by import By
 from selenium import webdriver
@@ -18,9 +19,26 @@ try:
 	sleep(1)
 
 	#Gets the total number of pages inside the file
+	try:
+		totalOfPages = int(browser.find_element(By.CLASS_NAME, "status_719d330e").text.replace("/", ""))
 	
-	totalOfPages = int(browser.find_element(By.CLASS_NAME, "status_719d330e").text.replace("/", ""))
-	counter = 1
+	except NoSuchElementException:
+		totalOfPages = int(browser.find_element(By.CLASS_NAME, "status_5a88b9b2").text.replace("/", ""))	
+
+	except Exception as error:
+		print(f"""
+			An unexpected error ocurred while getting the total of pages of the document!
+			You can report this message to https://github.com/willnaoosmith/Onedrive-Private-PDF-Downloader/issues
+			Here's the error message: {str(error)}
+		""")
+		
+		try:
+			totalOfPages = int(input("\nFor now, type here the total quantity of pages in your document: "))
+		
+		except Exception as error:
+			print(f"An error ocurred while getting the total of pages you provided, please try again with a valid total of pages.")
+	else:
+		counter = 1
 	
 	#Gets the filename
 	browser.find_element(By.XPATH, "//button[@aria-label='Info. Open the details pane']").click()
