@@ -40,12 +40,24 @@ try:
 	else:
 		counter = 1
 	
-	#Gets the filename
-	browser.find_element(By.XPATH, "//button[@aria-label='Info. Open the details pane']").click()
-	sleep(1)
-	filename = browser.find_element(By.CLASS_NAME, "od-DetailsPane-PrimaryPane-header-title").text	
+	try:
+		#Gets the filename
+		browser.find_element(By.XPATH, "//button[@aria-label='Info. Open the details pane']").click()
+		sleep(1)
+		filename = browser.find_element(By.CLASS_NAME, "od-DetailsPane-PrimaryPane-header-title").text	
 	
-	print(f'Starting the export of the file "{filename}". This might take a while depending on the amount of pages.')
+	except NoSuchElementException:
+		filename = input("Type here your filename with the extension: ")
+
+	except Exception as error:
+		print(f"""
+			An unexpected error ocurred while getting the filename of the document!
+			You can report this message to https://github.com/willnaoosmith/Onedrive-Private-PDF-Downloader/issues
+			Here's the error message: {str(error)}
+		""")
+
+	else:
+		print(f'Starting the export of the file "{filename}". This might take a while depending on the amount of pages.')
 
 	filesList = []
 
