@@ -37,7 +37,9 @@ try:
 		
 		except Exception as error:
 			print(f"An error ocurred while getting the total of pages you provided, please try again with a valid total of pages.")
-	else:
+			sys.exit(0)
+			
+	finally:
 		counter = 1
 	
 	try:
