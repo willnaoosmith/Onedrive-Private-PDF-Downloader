@@ -25,7 +25,7 @@ def parse_arguments() -> argparse.Namespace:
         description="Export a PDF (also the protected ones) from an authenticated session."
     )
     parser.add_argument(
-        "--profile", type=str, help="Path to the Firefox profile", default=None
+        "--profile", type=str, help="Path to the browser profile", default=None
     )
     parser.add_argument(
         "--keep-imgs",
