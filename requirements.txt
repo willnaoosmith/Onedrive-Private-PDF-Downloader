@@ -1,0 +1,3 @@
+argparse
+selenium
+img2pdf
