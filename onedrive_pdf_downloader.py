@@ -11,10 +11,12 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service as FirefoxService
 
-CLASS_NAME_TOTAL_PAGES = "status_5a88b9b2"
-CLASS_NAME_FILE_NAME = "OneUpNonInteractiveCommandNewDesign_156f96ef"
-CLASS_NAME_TOOLBAR = "root_5a88b9b2"
-ARIA_LABEL_NEXT_PAGE = "Vai alla pagina successiva."
+# if the class names are not up-to-date, you can use the browser inspector
+# to get the new ones and add them here
+CLASS_NAMES_TOTAL_PAGES = ["status_5a88b9b2"]
+CLASS_NAMES_FILE_NAME = ["OneUpNonInteractiveCommandNewDesign_156f96ef"]
+CLASS_NAMES_TOOLBAR = ["root_5a88b9b2"]
+ARIA_LABELS_NEXT_PAGE = ["Vai alla pagina successiva."]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -103,6 +105,82 @@ def get_browser(args) -> webdriver:
             raise ValueError(f"Unsupported browser: {args.browser}")
 
 
+def find_element_by_class_names(browser, class_names):
+    """Find an element by one of the class names in the list.
+
+    Args:
+        browser (webdriver): Browser instance
+        class_names (list[str]): List of class names to search
+
+    Raises:
+        NoSuchElementException: If no element is found
+
+    Returns:
+        WebElement: The found element
+    """
+    for class_name in class_names:
+        try:
+            element = browser.find_element(By.CLASS_NAME, class_name)
+            logging.debug(f"Element found using class name: {class_name}")
+            return element
+        except NoSuchElementException:
+            continue
+    raise NoSuchElementException(
+        f"No element found with any of the class names: {class_names}"
+    )
+
+
+def find_next_page_button(browser, aria_labels):
+    """Find the next page button by one of the aria labels in the list.
+
+    Args:
+        browser (WebDriver): Browser instance
+        aria_labels (list[str]): List of aria labels to search
+
+    Raises:
+        NoSuchElementException: If no element is found
+
+    Returns:
+        WebElement: The found element
+    """
+    for aria_label in aria_labels:
+        try:
+            next_page_button = browser.find_elements(
+                By.XPATH, f"//button[@aria-label='{aria_label}']"
+            )[-1]
+            logging.debug(f"Next page button found using aria label: {aria_label}")
+            return next_page_button
+        except NoSuchElementException:
+            continue
+    raise NoSuchElementException(
+        f"No next page button found with any of the aria labels: {aria_labels}"
+    )
+
+
+def hide_toolbar(browser, class_names) -> None:
+    """Hide the toolbar by one of the class names in the list.
+
+    Args:
+        browser (WebDriver): Browser instance
+        class_names (list[str]): List of class names to search
+
+    Returns:
+        None
+    """
+    for class_name in class_names:
+        try:
+            browser.execute_script(
+                f"document.getElementsByClassName('{class_name}')[0].style.visibility = 'hidden'"
+            )
+            logging.debug(f"Toolbar hidden using class name: {class_name}")
+            return
+        except (IndexError, NoSuchElementException):
+            continue
+    raise NoSuchElementException(
+        f"No toolbar found with any of the class names: {class_names}"
+    )
+
+
 def main() -> None:
     """Main function to export the PDF file."""
     args = parse_arguments()
@@ -118,7 +196,7 @@ def main() -> None:
 
     try:
         total_of_pages = int(
-            browser.find_element(By.CLASS_NAME, CLASS_NAME_TOTAL_PAGES).text.replace(
+            find_element_by_class_names(browser, CLASS_NAMES_TOTAL_PAGES).text.replace(
                 "/", ""
             )
         )
@@ -130,7 +208,7 @@ def main() -> None:
         total_of_pages = int(input("Insert the total number of pages manually: "))
 
     try:
-        filename = browser.find_element(By.CLASS_NAME, CLASS_NAME_FILE_NAME).text
+        filename = find_element_by_class_names(browser, CLASS_NAMES_FILE_NAME).text
         logging.info(f"Detected file name: {filename}")
     except NoSuchElementException:
         logging.warning(
@@ -151,9 +229,7 @@ def main() -> None:
 
     # Hide the toolbar for screenshots
     try:
-        browser.execute_script(
-            f"document.getElementsByClassName('{CLASS_NAME_TOOLBAR}')[0].style.visibility = 'hidden'"
-        )
+        hide_toolbar(browser, CLASS_NAMES_TOOLBAR)
         logging.info("Toolbar hidden for clean screenshots.")
     except NoSuchElementException:
         logging.warning(
@@ -174,9 +250,7 @@ def main() -> None:
         page_number += 1
 
         try:
-            next_page_button = browser.find_elements(
-                By.XPATH, f"//button[@aria-label='{ARIA_LABEL_NEXT_PAGE}']"
-            )[-1]
+            next_page_button = find_next_page_button(browser, ARIA_LABELS_NEXT_PAGE)
         except NoSuchElementException:
             logging.error(
                 "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
