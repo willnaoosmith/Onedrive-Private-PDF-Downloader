@@ -44,14 +44,14 @@ def parse_arguments() -> argparse.Namespace:
         "--profile-dir",
         "-p",
         type=str,
-        help="Path to the browser profile, if supported",
+        help="Path to the browser profile.",
         default=None,
     )
     parser.add_argument(
         "--profile-name",
         "-n",
         type=str,
-        help="Profile name to use, if supported",
+        help="Profile name to use, only for Chrome.",
         default=None,
     )
     parser.add_argument(
