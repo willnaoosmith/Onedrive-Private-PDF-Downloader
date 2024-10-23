@@ -6,12 +6,13 @@ from time import sleep
 import img2pdf
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.service import Service as FirefoxService
 
 CLASS_NAME_TOTAL_PAGES = "status_5a88b9b2"
 CLASS_NAME_FILE_NAME = "OneUpNonInteractiveCommandNewDesign_156f96ef"
-CLASS_NAME_TOOLBAR_HIDDEN = "root_5a88b9b2"
+CLASS_NAME_TOOLBAR = "root_5a88b9b2"
 ARIA_LABEL_NEXT_PAGE = "Vai alla pagina successiva."
 
 
@@ -25,10 +26,30 @@ def parse_arguments() -> argparse.Namespace:
         description="Export a PDF (also the protected ones) from an authenticated session."
     )
     parser.add_argument(
-        "--profile", type=str, help="Path to the browser profile", default=None
+        "--browser",
+        "-b",
+        type=str,
+        choices=["firefox", "chrome"],
+        help="Browser to use (firefox or chrome)",
+        default="firefox",
+    )
+    parser.add_argument(
+        "--profile-dir",
+        "-p",
+        type=str,
+        help="Path to the browser profile, if supported",
+        default=None,
+    )
+    parser.add_argument(
+        "--profile-name",
+        "-n",
+        type=str,
+        help="Profile name to use, if supported",
+        default=None,
     )
     parser.add_argument(
         "--keep-imgs",
+        "-k",
         action="store_true",
         help="Keep the images after the PDF creation",
         default=False,
@@ -37,17 +58,45 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def get_browser(args) -> webdriver:
+    """Get the browser instance based on the arguments.
+
+    Args:
+        args (argparse.Namespace): Arguments from the command line
+
+    Raises:
+        ValueError: If the browser is not supported
+
+    Returns:
+        webdriver: Browser instance
+    """
+    options = None
+    service = None
+
+    match args.browser:
+        case "firefox":
+            options = webdriver.FirefoxOptions()
+            service = FirefoxService(log_path=os.devnull)
+            if args.profile_dir:
+                options.profile = webdriver.FirefoxProfile(args.profile_dir)
+            return webdriver.Firefox(service=service, options=options)
+
+        case "chrome":
+            options = webdriver.ChromeOptions()
+            service = ChromeService(log_path=os.devnull)
+            if args.profile_dir and args.profile_name:
+                options.add_argument(f"user-data-dir={args.profile_dir}")
+                options.add_argument(f"--profile-directory={args.profile_name}")
+            return webdriver.Chrome(service=service, options=options)
+
+        case _:
+            raise ValueError(f"Unsupported browser: {args.browser}")
+
+
 def main() -> None:
     """Main function to export the PDF file."""
     args = parse_arguments()
-
-    service = Service(log_path=os.devnull)
-    options = webdriver.FirefoxOptions()
-
-    if args.profile:
-        options.profile = webdriver.FirefoxProfile(args.profile)
-
-    browser = webdriver.Firefox(service=service, options=options)
+    browser = get_browser(args)
     browser.get(args.url)
 
     input(
@@ -61,17 +110,16 @@ def main() -> None:
                 "/", ""
             )
         )
-    except ValueError:
+    except ValueError | NoSuchElementException:
         print(
-            "The page counter is not visible or the CLASS_NAME_TOTAL_PAGES is not up-to-date. Insert the page number manually."
+            "The page counter is not visible or the CLASS_NAME_TOTAL_PAGES is not up-to-date."
+            "Insert the page number manually."
         )
         total_of_pages = int(input("Total of pages: "))
 
-    page_number = 1
-
     try:
         filename = browser.find_element(By.CLASS_NAME, CLASS_NAME_FILE_NAME).text
-    except Exception as _:
+    except NoSuchElementException:
         print(
             "The file name is not visible or the CLASS_NAME_FILE_NAME is not up-to-date. Insert the file name manually."
         )
@@ -84,16 +132,17 @@ def main() -> None:
     files_list: list[str] = []
     os.makedirs("tmp_images", exist_ok=True)
 
-    # Hide the toolbar for the screenshots
+    # Hide the toolbar for screenshots
     try:
         browser.execute_script(
-            f"document.getElementsByClassName('{CLASS_NAME_TOOLBAR_HIDDEN}')[0].style.visibility = 'hidden' "
+            f"document.getElementsByClassName('{CLASS_NAME_TOOLBAR}')[0].style.visibility = 'hidden'"
         )
     except NoSuchElementException:
         print(
             "The toolbar is not visible or the CLASS_NAME_TOOLBAR_HIDDEN is not up-to-date. Errors might occur."
         )
 
+    page_number = 1
     while page_number <= total_of_pages:
         sleep(5)
         browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(
@@ -117,7 +166,7 @@ def main() -> None:
             break
         browser.execute_script("arguments[0].click();", next_page_button)
 
-    print(f'Saving the file as "{filename}"')
+    print(f'Saving the file as "{filename}".')
     with open(f"{filename}", "wb") as out_file:
         out_file.write(img2pdf.convert(files_list))
 
