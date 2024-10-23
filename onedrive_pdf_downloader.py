@@ -22,7 +22,11 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(levelname)s - %(message)s",
 )
+
 logging.getLogger("img2pdf").setLevel(logging.ERROR)
+logging.getLogger("selenium").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("PIL").setLevel(logging.ERROR)
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -61,6 +65,13 @@ def parse_arguments() -> argparse.Namespace:
         "-k",
         action="store_true",
         help="Keep the images after the PDF creation",
+        default=False,
+    )
+    parser.add_argument(
+        "--debug",
+        "-d",
+        action="store_true",
+        help="Show debug messages",
         default=False,
     )
     parser.add_argument("url", type=str, help="URL of the PDF file")
@@ -121,12 +132,13 @@ def find_element_by_class_names(browser, class_names):
     for class_name in class_names:
         try:
             element = browser.find_element(By.CLASS_NAME, class_name)
-            logging.debug(f"Element found using class name: {class_name}")
+            logging.debug(f"Element found using class name: '{class_name}'")
             return element
         except NoSuchElementException:
+            logging.debug(f"Element not found using class name: '{class_name}'")
             continue
     raise NoSuchElementException(
-        f"No element found with any of the class names: {class_names}"
+        f"No element found with any of the class names: '{class_names}'"
     )
 
 
@@ -148,12 +160,15 @@ def find_next_page_button(browser, aria_labels):
             next_page_button = browser.find_elements(
                 By.XPATH, f"//button[@aria-label='{aria_label}']"
             )[-1]
-            logging.debug(f"Next page button found using aria label: {aria_label}")
+            logging.debug(f"Next page button found using aria label: '{aria_label}'")
             return next_page_button
         except NoSuchElementException:
+            logging.debug(
+                f"Next page button not found using aria label: '{aria_label}'"
+            )
             continue
     raise NoSuchElementException(
-        f"No next page button found with any of the aria labels: {aria_labels}"
+        f"No next page button found with any of the aria labels: '{aria_labels}'"
     )
 
 
@@ -172,18 +187,23 @@ def hide_toolbar(browser, class_names) -> None:
             browser.execute_script(
                 f"document.getElementsByClassName('{class_name}')[0].style.visibility = 'hidden'"
             )
-            logging.debug(f"Toolbar hidden using class name: {class_name}")
+            logging.debug(f"Toolbar hidden using class name: '{class_name}'")
             return
         except (IndexError, NoSuchElementException):
+            logging.debug(f"Toolbar not found using class name: '{class_name}'")
             continue
     raise NoSuchElementException(
-        f"No toolbar found with any of the class names: {class_names}"
+        f"No toolbar found with any of the class names: '{class_names}'"
     )
 
 
 def main() -> None:
     """Main function to export the PDF file."""
     args = parse_arguments()
+
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+
     browser = get_browser(args)
     browser.get(args.url)
 
