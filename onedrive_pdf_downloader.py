@@ -110,7 +110,9 @@ def main() -> None:
     browser.get(args.url)
 
     input(
-        "Make sure to authenticate and reach the PDF preview. Once the file is loaded and the page counter is visible, press [ENTER] to start."
+        "Make sure to authenticate and reach the PDF preview. "
+        "Once the file is loaded and the page counter is visible, press [ENTER] to start. "
+        "Keep the browser in the foreground for better results."
     )
     sleep(2)
 
@@ -139,7 +141,8 @@ def main() -> None:
         )
 
     logging.info(
-        f'Starting the export of the file "{filename}". This might take a while depending on the number of pages.'
+        f'Starting the export of the file "{filename}". '
+        "This might take a while depending on the number of pages."
     )
 
     files_list: list[str] = []
@@ -187,7 +190,7 @@ def main() -> None:
         out_file.write(img2pdf.convert(files_list))
 
     if not args.keep_imgs:
-        shutil.rmtree(temp_dir)
+        shutil.rmtree("tmp", ignore_errors=True)
         logging.info("Temporary images removed.")
 
     browser.quit()
