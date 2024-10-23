@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 import shutil
-from time import sleep
+from time import sleep, time
 
 import img2pdf
 from selenium import webdriver
@@ -143,7 +143,8 @@ def main() -> None:
     )
 
     files_list: list[str] = []
-    os.makedirs("tmp_images", exist_ok=True)
+    temp_dir = f"tmp/tmp_images_{int(time())}"
+    os.makedirs(temp_dir, exist_ok=True)
 
     # Hide the toolbar for screenshots
     try:
@@ -161,9 +162,9 @@ def main() -> None:
     while page_number <= total_of_pages:
         sleep(5)
         browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(
-            f"tmp_images/{str(page_number)}.png"
+            f"{temp_dir}/{str(page_number)}.png"
         )
-        files_list.append(f"tmp_images/{str(page_number)}.png")
+        files_list.append(f"{temp_dir}/{str(page_number)}.png")
 
         logging.info(f"Page {str(page_number)} of {str(total_of_pages)} exported.")
 
@@ -186,7 +187,7 @@ def main() -> None:
         out_file.write(img2pdf.convert(files_list))
 
     if not args.keep_imgs:
-        shutil.rmtree("tmp_images")
+        shutil.rmtree(temp_dir)
         logging.info("Temporary images removed.")
 
     browser.quit()
