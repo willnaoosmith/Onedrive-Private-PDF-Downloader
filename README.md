@@ -2,6 +2,8 @@
 
 This project allows you to export PDFs, even those that are protected, from authenticated OneDrive sessions using Selenium. The tool automates the browser process to capture screenshots of each page and combine them into a PDF file.
 
+This project was initially based on: [willnaoosmith/Onedrive-Private-PDF-Downloader](https://github.com/willnaoosmith/Onedrive-Private-PDF-Downloader).
+
 - [PDF Exporter from Authenticated OneDrive Sessions](#pdf-exporter-from-authenticated-onedrive-sessions)
   - [Features](#features)
   - [Requirements](#requirements)
