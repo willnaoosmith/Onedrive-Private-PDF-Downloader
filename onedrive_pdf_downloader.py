@@ -39,7 +39,8 @@ def parse_arguments() -> argparse.Namespace:
         argparse.Namespace: The parsed arguments.
     """
     parser = argparse.ArgumentParser(
-        description="Export a PDF (also the protected ones) from an authenticated session."
+        description="Export a PDF (also the protected ones) from an authenticated session.",
+        epilog="Made with ❤️ by @Francesco146",
     )
     parser.add_argument(
         "--browser",
@@ -48,6 +49,7 @@ def parse_arguments() -> argparse.Namespace:
         choices=["firefox", "chrome"],
         help="Browser to use (firefox or chrome)",
         default="firefox",
+        metavar="BROWSER",
     )
     parser.add_argument(
         "--profile-dir",
@@ -55,6 +57,7 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         help="Path to the browser profile.",
         default=None,
+        metavar="PATH",
     )
     parser.add_argument(
         "--profile-name",
@@ -62,6 +65,7 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         help="Profile name to use, only for Chrome.",
         default=None,
+        metavar="PATH",
     )
     parser.add_argument(
         "--keep-imgs",
@@ -83,6 +87,7 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         help="Specify the output file name",
         required=False,
+        metavar="FILE",
     )
     parser.add_argument("url", type=str, help="URL of the PDF file")
     return parser.parse_args()
