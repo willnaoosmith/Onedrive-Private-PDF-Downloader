@@ -163,4 +163,4 @@ cython_debug/
 
 *.pdf
 .DS_Store
-tmp/
+*_images/

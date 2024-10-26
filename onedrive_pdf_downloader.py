@@ -2,8 +2,9 @@ import argparse
 import logging
 import os
 import shutil
+import tempfile
 from contextlib import contextmanager
-from time import sleep, time
+from time import sleep
 
 import img2pdf
 from selenium import webdriver
@@ -24,6 +25,7 @@ logging.basicConfig(
     format="%(levelname)s - %(message)s",
 )
 
+# avoid unnecessary logs
 logging.getLogger("img2pdf").setLevel(logging.ERROR)
 logging.getLogger("selenium").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
@@ -224,6 +226,57 @@ def browser_context(args: argparse.Namespace):
         logging.info("Browser session ended.")
 
 
+def get_total_pages(browser: webdriver) -> int:
+    """Get the total number of pages from the page counter or manually.
+
+    Args:
+        browser (webdriver): Browser instance
+
+    Returns:
+        int: The total number of pages
+    """
+    try:
+        total_of_pages = int(
+            find_element_by_class_names(browser, CLASS_NAMES_TOTAL_PAGES).text.replace(
+                "/", ""
+            )
+        )
+        logging.info(f"Total number of pages detected: {total_of_pages}")
+    except (ValueError, NoSuchElementException):
+        logging.warning(
+            "The page counter is not visible or the CLASS_NAME_TOTAL_PAGES is not up-to-date."
+        )
+        total_of_pages = int(input("Insert the total number of pages manually: "))
+    return total_of_pages
+
+
+def get_output_filename(args: argparse.Namespace, browser: webdriver) -> str:
+    """Get the output filename based on the arguments, the detected one or manually.
+
+    Args:
+        args (argparse.Namespace): Arguments from the command line
+        browser (webdriver): Browser instance
+
+    Returns:
+        str: The output filename
+    """
+    if args.output_file:
+        filename = args.output_file
+    else:
+        try:
+            filename = find_element_by_class_names(browser, CLASS_NAMES_FILE_NAME).text
+            logging.info(f"Detected file name: {filename}")
+        except NoSuchElementException:
+            logging.warning(
+                "The file name is not visible or the CLASS_NAME_FILE_NAME is not up-to-date."
+            )
+            filename = input(
+                "Insert the file name manually (with the extension e.g.: file.pdf): "
+            )
+
+    return filename
+
+
 def main() -> None:
     """Main function to export the PDF file."""
     args = parse_arguments()
@@ -241,34 +294,9 @@ def main() -> None:
         )
         sleep(2)
 
-        try:
-            total_of_pages = int(
-                find_element_by_class_names(
-                    browser, CLASS_NAMES_TOTAL_PAGES
-                ).text.replace("/", "")
-            )
-            logging.info(f"Total number of pages detected: {total_of_pages}")
-        except (ValueError, NoSuchElementException):
-            logging.warning(
-                "The page counter is not visible or the CLASS_NAME_TOTAL_PAGES is not up-to-date."
-            )
-            total_of_pages = int(input("Insert the total number of pages manually: "))
+        total_of_pages = get_total_pages(browser)
 
-        if args.output_file:
-            filename = args.output_file
-        else:
-            try:
-                filename = find_element_by_class_names(
-                    browser, CLASS_NAMES_FILE_NAME
-                ).text
-                logging.info(f"Detected file name: {filename}")
-            except NoSuchElementException:
-                logging.warning(
-                    "The file name is not visible or the CLASS_NAME_FILE_NAME is not up-to-date."
-                )
-                filename = input(
-                    "Insert the file name manually (with the extension e.g.: file.pdf): "
-                )
+        filename = get_output_filename(args, browser)
 
         logging.info(
             f'Starting the export of the file "{filename}". '
@@ -276,48 +304,55 @@ def main() -> None:
         )
 
         files_list: list[str] = []
-        temp_dir = f"tmp/tmp_images_{int(time())}"
-        os.makedirs(temp_dir, exist_ok=True)
 
-        # Hide the toolbar for screenshots
-        try:
-            hide_toolbar(browser, CLASS_NAMES_TOOLBAR)
-            logging.info("Toolbar hidden for clean screenshots.")
-        except NoSuchElementException:
-            logging.warning(
-                "The toolbar is not visible or the CLASS_NAME_TOOLBAR is not up-to-date. "
-                "The screenshots might contain the toolbar or other errors might occur."
-            )
-
-        page_number = 1
-        while page_number <= total_of_pages:
-            sleep(5)
-            browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(
-                f"{temp_dir}/{str(page_number)}.png"
-            )
-            files_list.append(f"{temp_dir}/{str(page_number)}.png")
-
-            logging.info(f"Page {str(page_number)} of {str(total_of_pages)} exported.")
-
-            page_number += 1
-
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Hide the toolbar for screenshots
             try:
-                next_page_button = find_next_page_button(browser, ARIA_LABELS_NEXT_PAGE)
+                hide_toolbar(browser, CLASS_NAMES_TOOLBAR)
+                logging.info("Toolbar hidden for clean screenshots.")
             except NoSuchElementException:
-                logging.error(
-                    "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
-                    "up-to-date or some race condition occurred. Please, try again. Saving the obtained ones."
+                logging.warning(
+                    "The toolbar is not visible or the CLASS_NAME_TOOLBAR is not up-to-date. "
+                    "The screenshots might contain the toolbar or other errors might occur."
                 )
-                break
-            browser.execute_script("arguments[0].click();", next_page_button)
 
-    logging.info(f'Saving the file as "{filename}".')
-    with open(f"{filename}", "wb") as out_file:
-        out_file.write(img2pdf.convert(files_list))
+            page_number = 1
+            while page_number <= total_of_pages:
+                sleep(5)
+                image_path = f"{temp_dir}/{str(page_number)}.png"
+                browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(image_path)
+                files_list.append(image_path)
 
-    if not args.keep_imgs:
-        shutil.rmtree("tmp", ignore_errors=True)
-        logging.info("Temporary images removed.")
+                logging.info(
+                    f"Page {str(page_number)} of {str(total_of_pages)} exported."
+                )
+
+                page_number += 1
+
+                try:
+                    next_page_button = find_next_page_button(
+                        browser, ARIA_LABELS_NEXT_PAGE
+                    )
+                except NoSuchElementException:
+                    logging.error(
+                        "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
+                        "up-to-date or some race condition occurred. Please, try again. Saving the obtained ones."
+                    )
+                    break
+                browser.execute_script("arguments[0].click();", next_page_button)
+
+            logging.info(f'Saving the file as "{filename}".')
+            with open(filename, "wb") as out_file:
+                out_file.write(img2pdf.convert(files_list))
+
+            if args.keep_imgs:
+                keep_dir = f"{filename}_images"
+                os.makedirs(keep_dir, exist_ok=True)
+                for file_path in files_list:
+                    shutil.copy(file_path, keep_dir)
+                logging.info(f"Images kept in directory '{keep_dir}'.")
+
+    logging.info("Temporary images removed.")
 
 
 if __name__ == "__main__":
