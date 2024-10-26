@@ -88,6 +88,41 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def find_element(browser: webdriver, identifiers: list[str], by: By):
+    """Find an element by one of the identifiers in the list.
+
+    Args:
+        browser (webdriver): Browser instance
+        identifiers (list[str]): List of identifiers to search
+        by (By): The method to use for finding the element
+
+    Raises:
+        NoSuchElementException: If no element is found
+
+    Returns:
+        WebElement: The found element
+    """
+    for identifier in identifiers:
+        try:
+            match by:
+                case By.CLASS_NAME:
+                    element = browser.find_element(by, identifier)
+                case By.XPATH:
+                    element = browser.find_elements(
+                        by, f"//button[@aria-label='{identifier}']"
+                    )[-1]
+                case _:
+                    raise ValueError(f"Unsupported method: {by}")
+            logging.debug(f"Element found using {by}: '{identifier}'")
+            return element
+        except NoSuchElementException:
+            logging.debug(f"Element not found using {by}: '{identifier}'")
+            continue
+    raise NoSuchElementException(
+        f"No element found with any of the identifiers: {identifiers}"
+    )
+
+
 def get_browser(args) -> webdriver:
     """Get the browser instance based on the arguments.
 
@@ -103,7 +138,7 @@ def get_browser(args) -> webdriver:
     options = None
     service = None
 
-    logging.info(f"Initializing browser: {args.browser}")
+    logging.info(f"Initializing browser: '{args.browser}'")
 
     match args.browser:
         case "firefox":
@@ -122,64 +157,7 @@ def get_browser(args) -> webdriver:
             return webdriver.Chrome(service=service, options=options)
 
         case _:
-            logging.error(f"Unsupported browser: {args.browser}")
             raise ValueError(f"Unsupported browser: {args.browser}")
-
-
-def find_element_by_class_names(browser, class_names):
-    """Find an element by one of the class names in the list.
-
-    Args:
-        browser (webdriver): Browser instance
-        class_names (list[str]): List of class names to search
-
-    Raises:
-        NoSuchElementException: If no element is found
-
-    Returns:
-        WebElement: The found element
-    """
-    for class_name in class_names:
-        try:
-            element = browser.find_element(By.CLASS_NAME, class_name)
-            logging.debug(f"Element found using class name: '{class_name}'")
-            return element
-        except NoSuchElementException:
-            logging.debug(f"Element not found using class name: '{class_name}'")
-            continue
-    raise NoSuchElementException(
-        f"No element found with any of the class names: '{class_names}'"
-    )
-
-
-def find_next_page_button(browser, aria_labels):
-    """Find the next page button by one of the aria labels in the list.
-
-    Args:
-        browser (WebDriver): Browser instance
-        aria_labels (list[str]): List of aria labels to search
-
-    Raises:
-        NoSuchElementException: If no element is found
-
-    Returns:
-        WebElement: The found element
-    """
-    for aria_label in aria_labels:
-        try:
-            next_page_button = browser.find_elements(
-                By.XPATH, f"//button[@aria-label='{aria_label}']"
-            )[-1]
-            logging.debug(f"Next page button found using aria label: '{aria_label}'")
-            return next_page_button
-        except NoSuchElementException:
-            logging.debug(
-                f"Next page button not found using aria label: '{aria_label}'"
-            )
-            continue
-    raise NoSuchElementException(
-        f"No next page button found with any of the aria labels: '{aria_labels}'"
-    )
 
 
 def hide_toolbar(browser, class_names) -> None:
@@ -203,7 +181,7 @@ def hide_toolbar(browser, class_names) -> None:
             logging.debug(f"Toolbar not found using class name: '{class_name}'")
             continue
     raise NoSuchElementException(
-        f"No toolbar found with any of the class names: '{class_names}'"
+        f"No toolbar found with any of the class names: {class_names}"
     )
 
 
@@ -237,7 +215,7 @@ def get_total_pages(browser: webdriver) -> int:
     """
     try:
         total_of_pages = int(
-            find_element_by_class_names(browser, CLASS_NAMES_TOTAL_PAGES).text.replace(
+            find_element(browser, CLASS_NAMES_TOTAL_PAGES, By.CLASS_NAME).text.replace(
                 "/", ""
             )
         )
@@ -264,8 +242,8 @@ def get_output_filename(args: argparse.Namespace, browser: webdriver) -> str:
         filename = args.output_file
     else:
         try:
-            filename = find_element_by_class_names(browser, CLASS_NAMES_FILE_NAME).text
-            logging.info(f"Detected file name: {filename}")
+            filename = find_element(browser, CLASS_NAMES_FILE_NAME, By.CLASS_NAME).text
+            logging.info(f"Detected file name: '{filename}'")
         except NoSuchElementException:
             logging.warning(
                 "The file name is not visible or the CLASS_NAME_FILE_NAME is not up-to-date."
@@ -330,8 +308,8 @@ def main() -> None:
                 page_number += 1
 
                 try:
-                    next_page_button = find_next_page_button(
-                        browser, ARIA_LABELS_NEXT_PAGE
+                    next_page_button = find_element(
+                        browser, ARIA_LABELS_NEXT_PAGE, By.XPATH
                     )
                 except NoSuchElementException:
                     logging.error(
@@ -341,7 +319,7 @@ def main() -> None:
                     break
                 browser.execute_script("arguments[0].click();", next_page_button)
 
-            logging.info(f'Saving the file as "{filename}".')
+            logging.info(f"Saving the file as '{filename}'.")
             with open(filename, "wb") as out_file:
                 out_file.write(img2pdf.convert(files_list))
 
