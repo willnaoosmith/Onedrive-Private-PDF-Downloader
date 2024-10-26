@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import shutil
+from contextlib import contextmanager
 from time import sleep, time
 
 import img2pdf
@@ -73,6 +74,13 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Show debug messages",
         default=False,
+    )
+    parser.add_argument(
+        "--output-file",
+        "-o",
+        type=str,
+        help="Specify the output file name",
+        required=False,
     )
     parser.add_argument("url", type=str, help="URL of the PDF file")
     return parser.parse_args()
@@ -197,9 +205,6 @@ def hide_toolbar(browser, class_names) -> None:
     )
 
 
-from contextlib import contextmanager
-
-
 @contextmanager
 def browser_context(args: argparse.Namespace):
     """Context manager to handle the browser session.
@@ -249,16 +254,21 @@ def main() -> None:
             )
             total_of_pages = int(input("Insert the total number of pages manually: "))
 
-        try:
-            filename = find_element_by_class_names(browser, CLASS_NAMES_FILE_NAME).text
-            logging.info(f"Detected file name: {filename}")
-        except NoSuchElementException:
-            logging.warning(
-                "The file name is not visible or the CLASS_NAME_FILE_NAME is not up-to-date."
-            )
-            filename = input(
-                "Insert the file name manually (with the extension e.g.: file.pdf): "
-            )
+        if args.output_file:
+            filename = args.output_file
+        else:
+            try:
+                filename = find_element_by_class_names(
+                    browser, CLASS_NAMES_FILE_NAME
+                ).text
+                logging.info(f"Detected file name: {filename}")
+            except NoSuchElementException:
+                logging.warning(
+                    "The file name is not visible or the CLASS_NAME_FILE_NAME is not up-to-date."
+                )
+                filename = input(
+                    "Insert the file name manually (with the extension e.g.: file.pdf): "
+                )
 
         logging.info(
             f'Starting the export of the file "{filename}". '
