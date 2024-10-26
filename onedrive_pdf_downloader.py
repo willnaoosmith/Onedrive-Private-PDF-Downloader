@@ -197,6 +197,28 @@ def hide_toolbar(browser, class_names) -> None:
     )
 
 
+from contextlib import contextmanager
+
+
+@contextmanager
+def browser_context(args: argparse.Namespace):
+    """Context manager to handle the browser session.
+
+    Args:
+        args (argparse.Namespace): Arguments from the command line
+
+    Yields:
+        webdriver: Browser instance
+    """
+    browser = get_browser(args)
+    try:
+        yield browser
+    finally:
+        browser.quit()
+        print()  # Add a new line after the browser is finally closed
+        logging.info("Browser session ended.")
+
+
 def main() -> None:
     """Main function to export the PDF file."""
     args = parse_arguments()
@@ -204,80 +226,80 @@ def main() -> None:
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    browser = get_browser(args)
-    browser.get(args.url)
+    with browser_context(args) as browser:
+        browser.get(args.url)
 
-    input(
-        "Make sure to authenticate and reach the PDF preview. "
-        "Once the file is loaded and the page counter is visible, press [ENTER] to start. "
-        "Keep the browser in the foreground for better results."
-    )
-    sleep(2)
-
-    try:
-        total_of_pages = int(
-            find_element_by_class_names(browser, CLASS_NAMES_TOTAL_PAGES).text.replace(
-                "/", ""
-            )
+        input(
+            "Make sure to authenticate and reach the PDF preview. "
+            "Once the file is loaded and the page counter is visible, press [ENTER] to start. "
+            "Keep the browser in the foreground for better results.\n> [ENTER] "
         )
-        logging.info(f"Total number of pages detected: {total_of_pages}")
-    except (ValueError, NoSuchElementException):
-        logging.warning(
-            "The page counter is not visible or the CLASS_NAME_TOTAL_PAGES is not up-to-date."
-        )
-        total_of_pages = int(input("Insert the total number of pages manually: "))
-
-    try:
-        filename = find_element_by_class_names(browser, CLASS_NAMES_FILE_NAME).text
-        logging.info(f"Detected file name: {filename}")
-    except NoSuchElementException:
-        logging.warning(
-            "The file name is not visible or the CLASS_NAME_FILE_NAME is not up-to-date."
-        )
-        filename = input(
-            "Insert the file name manually (with the extension e.g.: file.pdf): "
-        )
-
-    logging.info(
-        f'Starting the export of the file "{filename}". '
-        "This might take a while depending on the number of pages."
-    )
-
-    files_list: list[str] = []
-    temp_dir = f"tmp/tmp_images_{int(time())}"
-    os.makedirs(temp_dir, exist_ok=True)
-
-    # Hide the toolbar for screenshots
-    try:
-        hide_toolbar(browser, CLASS_NAMES_TOOLBAR)
-        logging.info("Toolbar hidden for clean screenshots.")
-    except NoSuchElementException:
-        logging.warning(
-            "The toolbar is not visible or the CLASS_NAME_TOOLBAR is not up-to-date. "
-            "The screenshots might contain the toolbar or other errors might occur."
-        )
-
-    page_number = 1
-    while page_number <= total_of_pages:
-        sleep(5)
-        browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(
-            f"{temp_dir}/{str(page_number)}.png"
-        )
-        files_list.append(f"{temp_dir}/{str(page_number)}.png")
-
-        logging.info(f"Page {str(page_number)} of {str(total_of_pages)} exported.")
-
-        page_number += 1
+        sleep(2)
 
         try:
-            next_page_button = find_next_page_button(browser, ARIA_LABELS_NEXT_PAGE)
-        except NoSuchElementException:
-            logging.error(
-                "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
-                "up-to-date or some race condition occurred. Please, try again. Saving the obtained ones."
+            total_of_pages = int(
+                find_element_by_class_names(
+                    browser, CLASS_NAMES_TOTAL_PAGES
+                ).text.replace("/", "")
             )
-            break
-        browser.execute_script("arguments[0].click();", next_page_button)
+            logging.info(f"Total number of pages detected: {total_of_pages}")
+        except (ValueError, NoSuchElementException):
+            logging.warning(
+                "The page counter is not visible or the CLASS_NAME_TOTAL_PAGES is not up-to-date."
+            )
+            total_of_pages = int(input("Insert the total number of pages manually: "))
+
+        try:
+            filename = find_element_by_class_names(browser, CLASS_NAMES_FILE_NAME).text
+            logging.info(f"Detected file name: {filename}")
+        except NoSuchElementException:
+            logging.warning(
+                "The file name is not visible or the CLASS_NAME_FILE_NAME is not up-to-date."
+            )
+            filename = input(
+                "Insert the file name manually (with the extension e.g.: file.pdf): "
+            )
+
+        logging.info(
+            f'Starting the export of the file "{filename}". '
+            "This might take a while depending on the number of pages."
+        )
+
+        files_list: list[str] = []
+        temp_dir = f"tmp/tmp_images_{int(time())}"
+        os.makedirs(temp_dir, exist_ok=True)
+
+        # Hide the toolbar for screenshots
+        try:
+            hide_toolbar(browser, CLASS_NAMES_TOOLBAR)
+            logging.info("Toolbar hidden for clean screenshots.")
+        except NoSuchElementException:
+            logging.warning(
+                "The toolbar is not visible or the CLASS_NAME_TOOLBAR is not up-to-date. "
+                "The screenshots might contain the toolbar or other errors might occur."
+            )
+
+        page_number = 1
+        while page_number <= total_of_pages:
+            sleep(5)
+            browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(
+                f"{temp_dir}/{str(page_number)}.png"
+            )
+            files_list.append(f"{temp_dir}/{str(page_number)}.png")
+
+            logging.info(f"Page {str(page_number)} of {str(total_of_pages)} exported.")
+
+            page_number += 1
+
+            try:
+                next_page_button = find_next_page_button(browser, ARIA_LABELS_NEXT_PAGE)
+            except NoSuchElementException:
+                logging.error(
+                    "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
+                    "up-to-date or some race condition occurred. Please, try again. Saving the obtained ones."
+                )
+                break
+            browser.execute_script("arguments[0].click();", next_page_button)
 
     logging.info(f'Saving the file as "{filename}".')
     with open(f"{filename}", "wb") as out_file:
@@ -286,9 +308,6 @@ def main() -> None:
     if not args.keep_imgs:
         shutil.rmtree("tmp", ignore_errors=True)
         logging.info("Temporary images removed.")
-
-    browser.quit()
-    logging.info("Browser session ended.")
 
 
 if __name__ == "__main__":
