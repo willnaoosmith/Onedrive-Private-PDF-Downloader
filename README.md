@@ -83,6 +83,7 @@ python OnedrivePrivatePDFDownloader.py [options] <url>
 | `--profile-dir, -p`  | Path to the browser profile directory. If using Chrome, specify the user data directory. | `--profile-dir /path/to/profile`    |
 | `--profile-name, -n` | Profile name to use (Chrome only).                                                       | `--profile-name "Profile 1"`        |
 | `--keep-imgs, -k`    | Keep the temporary images used for PDF creation.                                         | `--keep-imgs`                       |
+| `--output-file, -o`    | Specify the output file name.                                         | `--output-file file.pdf`                       |
 | `url`                | The URL of the PDF file. This is a required argument.                                    | `https://blabla.sharepoint.com/...` |
 
 ### Example Command:
@@ -115,7 +116,7 @@ $ python OnedrivePrivatePDFDownloader.py --profile-dir /path/to/profile https://
 INFO - Initializing browser: firefox
 Make sure to authenticate and reach the PDF preview. 
 INFO - Total number of pages detected: 8
-INFO - Detected file name: 2024-10-21.pdf
+INFO - Detected file name: '2024-10-21.pdf'
 INFO - Starting the export of the file "2024-10-21.pdf". This might take a while depending on the number of pages.
 INFO - Toolbar hidden for clean screenshots.
 INFO - Page 1 of 8 exported.
@@ -126,7 +127,7 @@ INFO - Page 5 of 8 exported.
 INFO - Page 6 of 8 exported.
 INFO - Page 7 of 8 exported.
 INFO - Page 8 of 8 exported.
-INFO - Saving the file as "2024-10-21.pdf".
+INFO - Saving the file as '2024-10-21.pdf'.
 INFO - Temporary images removed.
 INFO - Browser session ended.
 ```
