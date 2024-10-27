@@ -40,7 +40,7 @@ def parse_arguments() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         description="Export a PDF (also the protected ones) from an authenticated session.",
-        epilog="Made with ❤️ by @Francesco146",
+        epilog="Made with ❤️ by @willnaoosmith and @Francesco146",
     )
     parser.add_argument(
         "--browser",
