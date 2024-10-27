@@ -49,8 +49,8 @@ Ensure the drivers are in your system’s `PATH` or specify their location expli
 
 1. Clone this repository:
     ```bash
-    git clone https://github.com/Francesco146/onedrive-protected-pdf-downloader
-    cd onedrive-protected-pdf-downloader
+    git clone https://github.com/willnaoosmith/Onedrive-Private-PDF-Downloader
+    cd Onedrive-Private-PDF-Downloader
     ```
 
 2. Install the required dependencies:
