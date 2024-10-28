@@ -83,7 +83,7 @@ python OnedrivePrivatePDFDownloader.py [options] <url>
 | `--profile-dir, -p`  | Path to the browser profile directory. If using Chrome, specify the user data directory. | `--profile-dir /path/to/profile`    |
 | `--profile-name, -n` | Profile name to use (Chrome only).                                                       | `--profile-name "Profile 1"`        |
 | `--keep-imgs, -k`    | Keep the temporary images used for PDF creation.                                         | `--keep-imgs`                       |
-| `--output-file, -o`    | Specify the output file name.                                         | `--output-file file.pdf`                       |
+| `--output-file, -o`  | Specify the output file name.                                                            | `--output-file file.pdf`            |
 | `url`                | The URL of the PDF file. This is a required argument.                                    | `https://blabla.sharepoint.com/...` |
 
 ### Example Command:
