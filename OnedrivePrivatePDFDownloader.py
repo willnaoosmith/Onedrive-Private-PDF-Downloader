@@ -120,7 +120,7 @@ def find_element(browser: webdriver, identifiers: list[str], by: By):
                     raise ValueError(f"Unsupported method: {by}")
             logging.debug(f"Element found using {by}: '{identifier}'")
             return element
-        except NoSuchElementException:
+        except NoSuchElementException | IndexError:
             logging.debug(f"Element not found using {by}: '{identifier}'")
             continue
     raise NoSuchElementException(
