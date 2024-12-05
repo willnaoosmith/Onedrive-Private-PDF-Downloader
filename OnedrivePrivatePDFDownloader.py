@@ -120,7 +120,7 @@ def find_element(browser: webdriver, identifiers: list[str], by: By):
                     raise ValueError(f"Unsupported method: {by}")
             logging.debug(f"Element found using {by}: '{identifier}'")
             return element
-        except NoSuchElementException:
+        except NoSuchElementException | IndexError:
             logging.debug(f"Element not found using {by}: '{identifier}'")
             continue
     raise NoSuchElementException(
@@ -319,7 +319,7 @@ def main() -> None:
                 except NoSuchElementException:
                     logging.error(
                         "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
-                        "up-to-date or some race condition occurred. Please, try again. Saving the obtained ones."
+                        "up-to-date or some race condition occurred. Please, update the tags and try again. Saving the obtained ones."
                     )
                     break
                 browser.execute_script("arguments[0].click();", next_page_button)
