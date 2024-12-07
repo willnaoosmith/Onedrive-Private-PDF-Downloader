@@ -8,7 +8,7 @@ from time import sleep
 
 import img2pdf
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, JavascriptException
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service as FirefoxService
@@ -120,7 +120,7 @@ def find_element(browser: webdriver, identifiers: list[str], by: By):
                     raise ValueError(f"Unsupported method: {by}")
             logging.debug(f"Element found using {by}: '{identifier}'")
             return element
-        except NoSuchElementException | IndexError:
+        except (NoSuchElementException, IndexError): # index error for the XPATH method
             logging.debug(f"Element not found using {by}: '{identifier}'")
             continue
     raise NoSuchElementException(
@@ -182,7 +182,7 @@ def hide_toolbar(browser, class_names) -> None:
             )
             logging.debug(f"Toolbar hidden using class name: '{class_name}'")
             return
-        except (IndexError, NoSuchElementException):
+        except (IndexError, NoSuchElementException, JavascriptException):
             logging.debug(f"Toolbar not found using class name: '{class_name}'")
             continue
     raise NoSuchElementException(
@@ -303,7 +303,15 @@ def main() -> None:
             while page_number <= total_of_pages:
                 sleep(5)
                 image_path = f"{temp_dir}/{str(page_number)}.png"
-                browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(image_path)
+                
+                try:
+                    browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(image_path)
+                except NoSuchElementException:
+                    logging.error(
+                        "Cannot find the pdf within the page because of internal changes in OneDrive."
+                    )
+                    return
+                
                 files_list.append(image_path)
 
                 logging.info(
@@ -316,13 +324,13 @@ def main() -> None:
                     next_page_button = find_element(
                         browser, ARIA_LABELS_NEXT_PAGE, By.XPATH
                     )
-                except NoSuchElementException:
+                    browser.execute_script("arguments[0].click();", next_page_button)
+                except (NoSuchElementException, JavascriptException):
                     logging.error(
                         "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
                         "up-to-date or some race condition occurred. Please, update the tags and try again. Saving the obtained ones."
                     )
                     break
-                browser.execute_script("arguments[0].click();", next_page_button)
 
             logging.info(f"Saving the file as '{filename}'.")
             with open(filename, "wb") as out_file:
