@@ -169,6 +169,6 @@ By following these steps, you can calibrate the tool to work with any changes in
 
 ## Contributing
 
-We welcome contributions to improve this tool. If you have found new class names or ARIA labels that work better, please consider submitting a pull request to update the configuration.
+We welcome contributions to improve this tool. If you have found new class names or ARIA labels, please consider submitting a pull request to update the configuration.
 
-For more details, see the CONTRIBUTING.md file.
+For more details, see the [CONTRIBUTING.md](/CONTRIBUTING.md) file.
