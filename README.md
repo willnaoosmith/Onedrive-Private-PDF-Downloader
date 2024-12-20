@@ -148,7 +148,7 @@ If the tool is not working correctly, you may need to update the class names and
 ### Steps to Calibrate:
 
 1. **Open the OneDrive page in your browser:**
-   - Use the browser's inspector tool to find the class names and ARIA labels for the elements used by the script.
+   - Use the browser's inspector tool (F12, Ctrl+Shift+I in most browsers, or right-click and select "Inspect") to find the class names or the ARIA labels for the elements used by the script.
 
 2. **Update the class names and ARIA labels in the script:**
    - Open the [OnedrivePrivatePDFDownloader.py](/OnedrivePrivatePDFDownloader.py#L18) file.
