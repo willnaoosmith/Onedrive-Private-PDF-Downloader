@@ -2,8 +2,13 @@
 
 This project allows you to export PDFs, even those that are protected, from authenticated OneDrive sessions using Selenium. The tool automates the browser process to capture screenshots of each page and combine them into a PDF file. Works also on OneDrive for Business.
 
+> [!WARNING]
+> This tool may need to be calibrated in order to work correctly. It is expected to be used by someone who can inspect a page and read HTML.
+
+
 - [PDF Exporter from Authenticated OneDrive Sessions](#pdf-exporter-from-authenticated-onedrive-sessions)
   - [Features](#features)
+  - [Preview](#preview)
   - [Requirements](#requirements)
     - [Python Packages:](#python-packages)
     - [Browsers:](#browsers)
@@ -13,7 +18,9 @@ This project allows you to export PDFs, even those that are protected, from auth
     - [Command-line Options](#command-line-options)
     - [Example Command:](#example-command)
     - [Profile Setup:](#profile-setup)
-  - [Preview](#preview)
+  - [Calibrating the Tool](#calibrating-the-tool)
+    - [Steps to Calibrate:](#steps-to-calibrate)
+  - [Contributing](#contributing)
 
 
 ## Features
@@ -21,6 +28,32 @@ This project allows you to export PDFs, even those that are protected, from auth
 - Ability to export protected PDFs from authenticated web sessions.
 - Can optionally keep or delete temporary images used for PDF creation.
 - Compatible with browser profiles to retain session data (useful for skipping the login).
+
+
+## Preview
+
+```bash
+$ python OnedrivePrivatePDFDownloader.py --profile-dir /path/to/profile https://blabla.sharepoint.com/...
+
+INFO - Initializing browser: firefox
+Make sure to authenticate and reach the PDF preview. 
+INFO - Total number of pages detected: 8
+INFO - Detected file name: '2024-10-21.pdf'
+INFO - Starting the export of the file "2024-10-21.pdf". This might take a while depending on the number of pages.
+INFO - Toolbar hidden for clean screenshots.
+INFO - Page 1 of 8 exported.
+INFO - Page 2 of 8 exported.
+INFO - Page 3 of 8 exported.
+INFO - Page 4 of 8 exported.
+INFO - Page 5 of 8 exported.
+INFO - Page 6 of 8 exported.
+INFO - Page 7 of 8 exported.
+INFO - Page 8 of 8 exported.
+INFO - Saving the file as '2024-10-21.pdf'.
+INFO - Temporary images removed.
+INFO - Browser session ended.
+```
+
 
 ## Requirements
 
@@ -108,26 +141,34 @@ To use an authenticated session, you may need to use a browser profile where you
     2. Find the `Profile Path`
     3. Use the `--profile-dir` option for the user data directory (e.g., `/path/to/profiles`) and the `--profile-name` option for the profile name (e.g., `Default`).
 
-## Preview
+## Calibrating the Tool
 
-```bash
-$ python OnedrivePrivatePDFDownloader.py --profile-dir /path/to/profile https://blabla.sharepoint.com/...
+If the tool is not working correctly, you may need to update the class names and ARIA labels used to identify elements on the OneDrive page. These values are defined in the [OnedrivePrivatePDFDownloader.py](/OnedrivePrivatePDFDownloader.py#L18) file.
 
-INFO - Initializing browser: firefox
-Make sure to authenticate and reach the PDF preview. 
-INFO - Total number of pages detected: 8
-INFO - Detected file name: '2024-10-21.pdf'
-INFO - Starting the export of the file "2024-10-21.pdf". This might take a while depending on the number of pages.
-INFO - Toolbar hidden for clean screenshots.
-INFO - Page 1 of 8 exported.
-INFO - Page 2 of 8 exported.
-INFO - Page 3 of 8 exported.
-INFO - Page 4 of 8 exported.
-INFO - Page 5 of 8 exported.
-INFO - Page 6 of 8 exported.
-INFO - Page 7 of 8 exported.
-INFO - Page 8 of 8 exported.
-INFO - Saving the file as '2024-10-21.pdf'.
-INFO - Temporary images removed.
-INFO - Browser session ended.
-```
+### Steps to Calibrate:
+
+1. **Open the OneDrive page in your browser:**
+   - Use the browser's inspector tool (F12, Ctrl+Shift+I in most browsers, or right-click and select "Inspect") to find the class names or the ARIA labels for the elements used by the script.
+
+2. **Update the class names and ARIA labels in the script:**
+   - Open the [OnedrivePrivatePDFDownloader.py](/OnedrivePrivatePDFDownloader.py#L18) file.
+   - Update the following lists with the new values:
+     ```python
+     CLASS_NAMES_TOTAL_PAGES = ["status_5a88b9b2"]  # Add the new class names for the total pages element
+     CLASS_NAMES_FILE_NAME = ["OneUpNonInteractiveCommandNewDesign_156f96ef"]  # Add the new class names for the file name element
+     CLASS_NAMES_TOOLBAR = ["root_5a88b9b2"]  # Add the new class names for the toolbar element
+     ARIA_LABELS_NEXT_PAGE = ["Vai alla pagina successiva."]  # Add the new ARIA labels for the next page button
+     ```
+
+3. **Save the changes and run the script again:**
+   - Save the updated [OnedrivePrivatePDFDownloader.py](/OnedrivePrivatePDFDownloader.py) file.
+   - Run the script with the updated values to ensure it works correctly.
+
+By following these steps, you can calibrate the tool to work with any changes in the OneDrive page structure.
+
+
+## Contributing
+
+We welcome contributions to improve this tool. If you have found new class names or ARIA labels, please consider submitting a pull request to update the configuration.
+
+For more details, see the [CONTRIBUTING.md](/CONTRIBUTING.md) file.
