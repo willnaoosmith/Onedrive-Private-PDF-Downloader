@@ -18,7 +18,7 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 CLASS_NAMES_TOTAL_PAGES = ["status_5a88b9b2"]
 CLASS_NAMES_FILE_NAME = ["OneUpNonInteractiveCommandNewDesign_156f96ef"]
 CLASS_NAMES_TOOLBAR = ["root_5a88b9b2"]
-ARIA_LABELS_NEXT_PAGE = ["Vai alla pagina successiva."]
+ARIA_LABELS_NEXT_PAGE = ["Vai alla pagina successiva.", "Go to the next page."]
 
 logging.basicConfig(
     level=logging.INFO,
