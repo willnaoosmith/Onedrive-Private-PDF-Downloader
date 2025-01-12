@@ -108,6 +108,9 @@ To run the script, use the following command structure:
 python OnedrivePrivatePDFDownloader.py [options] <url>
 ```
 
+#### **Note: for getting best results, make sure to adjust the side cropping as needed in the script.
+##### you can adjust the cropping by changing the values in the `crop_screenshot` function in the `OnedrivePrivatePDFDownloader.py` file.
+
 ### Command-line Options
 
 | Argument             | Description                                                                              | Example                             |
