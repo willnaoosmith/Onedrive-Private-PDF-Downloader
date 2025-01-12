@@ -163,3 +163,6 @@ cython_debug/
 
 *.pdf
 .DS_Store
+
+# idea project files
+.idea/

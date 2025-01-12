@@ -56,3 +56,5 @@ wrapt==1.17.0
     # via deprecated
 wsproto==1.2.0
     # via trio-websocket
+
+numpy~=2.2.1
