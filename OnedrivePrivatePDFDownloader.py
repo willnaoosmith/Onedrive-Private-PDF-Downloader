@@ -398,31 +398,29 @@ def main() -> None:
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    if args.cache_dir:
-        if args.browser == "firefox":
-            try:
-                pdf_file = find_pdf_in_cache(args.cache_dir)
-                logging.debug("Found PDF file in the cache: '%s'", pdf_file)
+    if args.cache_dir and args.browser == "firefox":
+        try:
+            pdf_file = find_pdf_in_cache(args.cache_dir)
+            logging.debug("Found PDF file in the cache: '%s'", pdf_file)
 
-                if args.output_file:
-                    filename = args.output_file
-                else:
-                    logging.warning(
-                        "The output file name for the cached PDF is recommended. Using the current timestamp as the output file name."  # noqa: E501 # pylint: disable=C0301
-                    )
-                    filename = f"{time.strftime("%Y-%m-%d_%H-%M-%S")}.pdf"
+            filename = args.output_file or f"{time.strftime('%Y-%m-%d_%H-%M-%S')}.pdf"  # noqa: E501 # pylint: disable=C0301
 
-                shutil.copy(pdf_file, filename)
-                logging.info("PDF file copied to '%s'", filename)
-                return
-            except FileNotFoundError:
-                logging.error(
-                    "No PDF file found in the cache directory, continuing without it."  # noqa: E501 # pylint: disable=C0301
+            if not args.output_file:
+                logging.warning(
+                    "Output file name is recommended. Using the current timestamp as the output file name."  # noqa: E501 # pylint: disable=C0301
                 )
-        else:
-            logging.warning(
-                "The cache directory search is only supported with Firefox, continuing without it."  # noqa: E501 # pylint: disable=C0301
+
+            shutil.copy(pdf_file, filename)
+            logging.info("PDF file copied to '%s'", filename)
+            return
+        except FileNotFoundError:
+            logging.error(
+                "No PDF file found in the cache directory, continuing without it."  # noqa: E501 # pylint: disable=C0301
             )
+    elif args.cache_dir:
+        logging.warning(
+            "Cache directory search is only supported with Firefox, continuing without it."  # noqa: E501 # pylint: disable=C0301
+        )
 
     with browser_context(args) as browser:
         browser.get(args.url)
