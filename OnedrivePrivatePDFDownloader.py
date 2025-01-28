@@ -3,12 +3,13 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 from contextlib import contextmanager
 from time import sleep
 
 import img2pdf
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, JavascriptException
+from selenium.common.exceptions import JavascriptException, NoSuchElementException
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service as FirefoxService
@@ -89,6 +90,16 @@ def parse_arguments() -> argparse.Namespace:
         required=False,
         metavar="FILE",
     )
+    parser.add_argument(
+        "--cache-dir",
+        "-r",
+        help=(
+            "Search in browser caches for RAW Lossless PDFs, only works with Firefox. "
+            "\033[93m\033[1mWARNING: Highly experimental, may cause problems and other issues. Read the documentation before using.\033[0m"
+        ),
+        required=False,
+        metavar="PATH",
+    )
     parser.add_argument("url", type=str, help="URL of the PDF file")
     return parser.parse_args()
 
@@ -120,7 +131,7 @@ def find_element(browser: webdriver, identifiers: list[str], by: By):
                     raise ValueError(f"Unsupported method: {by}")
             logging.debug(f"Element found using {by}: '{identifier}'")
             return element
-        except (NoSuchElementException, IndexError): # index error for the XPATH method
+        except (NoSuchElementException, IndexError):  # index error for the XPATH method
             logging.debug(f"Element not found using {by}: '{identifier}'")
             continue
     raise NoSuchElementException(
@@ -158,7 +169,8 @@ def get_browser(args) -> webdriver:
             service = ChromeService(log_path=os.devnull)
             if args.profile_dir and args.profile_name:
                 options.add_argument(f"user-data-dir={args.profile_dir}")
-                options.add_argument(f"--profile-directory={args.profile_name}")
+                options.add_argument(
+                    f"--profile-directory={args.profile_name}")
             return webdriver.Chrome(service=service, options=options)
 
         case _:
@@ -183,7 +195,8 @@ def hide_toolbar(browser, class_names) -> None:
             logging.debug(f"Toolbar hidden using class name: '{class_name}'")
             return
         except (IndexError, NoSuchElementException, JavascriptException):
-            logging.debug(f"Toolbar not found using class name: '{class_name}'")
+            logging.debug(
+                f"Toolbar not found using class name: '{class_name}'")
             continue
     raise NoSuchElementException(
         f"No toolbar found with any of the class names: {class_names}"
@@ -229,7 +242,8 @@ def get_total_pages(browser: webdriver) -> int:
         logging.warning(
             "The page counter is not visible or the CLASS_NAME_TOTAL_PAGES is not up-to-date."
         )
-        total_of_pages = int(input("Insert the total number of pages manually: "))
+        total_of_pages = int(
+            input("Insert the total number of pages manually: "))
     return total_of_pages
 
 
@@ -247,7 +261,8 @@ def get_output_filename(args: argparse.Namespace, browser: webdriver) -> str:
         filename = args.output_file
     else:
         try:
-            filename = find_element(browser, CLASS_NAMES_FILE_NAME, By.CLASS_NAME).text
+            filename = find_element(
+                browser, CLASS_NAMES_FILE_NAME, By.CLASS_NAME).text
             logging.info(f"Detected file name: '{filename}'")
         except NoSuchElementException:
             logging.warning(
@@ -260,12 +275,123 @@ def get_output_filename(args: argparse.Namespace, browser: webdriver) -> str:
     return filename
 
 
+def find_pdf_in_cache(cache_dir: str) -> str:
+    """Find the most recent PDF file in the browser cache directory by the first 4 bytes.
+
+    Args:
+        cache_dir (str): Path to the browser cache directory
+
+    Returns:
+        str: Path to the most recent PDF file
+    """
+    pdf_files = []
+    for root, _, files in os.walk(cache_dir):
+        for file in files:
+            file_path = os.path.join(root, file)
+            with open(file_path, "rb") as f:
+                first_4_bytes = f.read(4)
+                if first_4_bytes == b'%PDF':
+                    pdf_files.append(file_path)
+
+    if not pdf_files:
+        raise FileNotFoundError("No PDF file found in the cache directory.")
+
+    return max(pdf_files, key=os.path.getmtime)
+
+
+def export_pdf(args, browser, total_of_pages, filename):
+    """Export the PDF by taking screenshots of each page.
+
+    Args:
+        args (argparse.Namespace): Arguments from the command line
+        browser (webdriver): Browser instance
+        total_of_pages (int): Total number of pages
+        filename (str): Output filename
+    """
+    files_list = []
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Hide the toolbar for screenshots
+        try:
+            hide_toolbar(browser, CLASS_NAMES_TOOLBAR)
+            logging.info("Toolbar hidden for clean screenshots.")
+        except NoSuchElementException:
+            logging.warning(
+                "The toolbar is not visible or the CLASS_NAME_TOOLBAR is not up-to-date. "
+                "The screenshots might contain the toolbar or other errors might occur."
+            )
+
+        page_number = 1
+        while page_number <= total_of_pages:
+            sleep(5)
+            image_path = f"{temp_dir}/{str(page_number)}.png"
+
+            try:
+                browser.find_element(
+                    By.CSS_SELECTOR, "canvas").screenshot(image_path)
+            except NoSuchElementException:
+                logging.error(
+                    "Cannot find the pdf within the page because of internal changes in OneDrive."
+                )
+                return
+
+            files_list.append(image_path)
+
+            logging.info(
+                f"Page {str(page_number)} of {str(total_of_pages)} exported."
+            )
+
+            page_number += 1
+
+            try:
+                next_page_button = find_element(
+                    browser, ARIA_LABELS_NEXT_PAGE, By.XPATH
+                )
+                browser.execute_script(
+                    "arguments[0].click();", next_page_button)
+            except (NoSuchElementException, JavascriptException):
+                logging.error(
+                    "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
+                    "up-to-date or some race condition occurred. Please, update the tags and try again. Saving the obtained ones."
+                )
+                break
+
+        logging.info(f"Saving the file as '{filename}'.")
+        with open(filename, "wb") as out_file:
+            out_file.write(img2pdf.convert(files_list))
+
+        if args.keep_imgs:
+            keep_dir = f"{filename}_images"
+            os.makedirs(keep_dir, exist_ok=True)
+            for file_path in files_list:
+                shutil.copy(file_path, keep_dir)
+            logging.info(f"Images kept in directory '{keep_dir}'.")
+
+    logging.info("Temporary images removed.")
+
+
 def main() -> None:
     """Main function to export the PDF file."""
     args = parse_arguments()
 
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    if args.cache_dir:
+        pdf_file = find_pdf_in_cache(args.cache_dir)
+        logging.info(f"Found PDF file in the cache: '{pdf_file}'")
+
+        if args.output_file:
+            filename = args.output_file
+        else:
+            logging.warning(
+                "The output file name for the cached PDF is recommended. Using the current timestamp as the output file name."
+            )
+            filename = f"{time.strftime("%Y-%m-%d_%H-%M-%S")}.pdf"
+
+        shutil.copy(pdf_file, filename)
+        logging.info(f"PDF file copied to '{filename}'")
+        return
 
     with browser_context(args) as browser:
         browser.get(args.url)
@@ -286,64 +412,7 @@ def main() -> None:
             "This might take a while depending on the number of pages."
         )
 
-        files_list: list[str] = []
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Hide the toolbar for screenshots
-            try:
-                hide_toolbar(browser, CLASS_NAMES_TOOLBAR)
-                logging.info("Toolbar hidden for clean screenshots.")
-            except NoSuchElementException:
-                logging.warning(
-                    "The toolbar is not visible or the CLASS_NAME_TOOLBAR is not up-to-date. "
-                    "The screenshots might contain the toolbar or other errors might occur."
-                )
-
-            page_number = 1
-            while page_number <= total_of_pages:
-                sleep(5)
-                image_path = f"{temp_dir}/{str(page_number)}.png"
-                
-                try:
-                    browser.find_element(By.CSS_SELECTOR, "canvas").screenshot(image_path)
-                except NoSuchElementException:
-                    logging.error(
-                        "Cannot find the pdf within the page because of internal changes in OneDrive."
-                    )
-                    return
-                
-                files_list.append(image_path)
-
-                logging.info(
-                    f"Page {str(page_number)} of {str(total_of_pages)} exported."
-                )
-
-                page_number += 1
-
-                try:
-                    next_page_button = find_element(
-                        browser, ARIA_LABELS_NEXT_PAGE, By.XPATH
-                    )
-                    browser.execute_script("arguments[0].click();", next_page_button)
-                except (NoSuchElementException, JavascriptException):
-                    logging.error(
-                        "Cannot find the next page button. it could be ARIA_LABEL_NEXT_PAGE is not "
-                        "up-to-date or some race condition occurred. Please, update the tags and try again. Saving the obtained ones."
-                    )
-                    break
-
-            logging.info(f"Saving the file as '{filename}'.")
-            with open(filename, "wb") as out_file:
-                out_file.write(img2pdf.convert(files_list))
-
-            if args.keep_imgs:
-                keep_dir = f"{filename}_images"
-                os.makedirs(keep_dir, exist_ok=True)
-                for file_path in files_list:
-                    shutil.copy(file_path, keep_dir)
-                logging.info(f"Images kept in directory '{keep_dir}'.")
-
-    logging.info("Temporary images removed.")
+        export_pdf(args, browser, total_of_pages, filename)
 
 
 if __name__ == "__main__":
