@@ -290,14 +290,18 @@ def get_output_filename(args: argparse.Namespace, browser: webdriver) -> str:
 
 def find_pdf_in_cache(cache_dir: str) -> str:
     """
-    Find the most recent PDF file in the
-    browser cache directory by the first 4 bytes.
+    Find the most recent PDF file in the browser cache directory by reading the first 4 bytes.  # noqa: E501 # pylint: disable=C0301
+    The cache directory is handled by the browser, and the files are encoded, making MIME type guessing unreliable.  # noqa: E501 # pylint: disable=C0301
+    By reading the first 4 bytes of each file, we can identify PDF files. The most recent PDF file is selected using a heuristic.  # noqa: E501 # pylint: disable=C0301
 
     Args:
         cache_dir (str): Path to the browser cache directory
 
     Returns:
         str: Path to the most recent PDF file
+
+    Raises:
+        FileNotFoundError: If no PDF file is found in the cache directory
     """
     pdf_files = []
     for root, _, files in os.walk(cache_dir):
@@ -396,24 +400,29 @@ def main() -> None:
 
     if args.cache_dir:
         if args.browser == "firefox":
-            pdf_file = find_pdf_in_cache(args.cache_dir)
-            logging.info("Found PDF file in the cache: '%s'", pdf_file)
+            try:
+                pdf_file = find_pdf_in_cache(args.cache_dir)
+                logging.debug("Found PDF file in the cache: '%s'", pdf_file)
 
-            if args.output_file:
-                filename = args.output_file
-            else:
-                logging.warning(
-                    "The output file name for the cached PDF is recommended. Using the current timestamp as the output file name."  # noqa: E501 # pylint: disable=C0301
+                if args.output_file:
+                    filename = args.output_file
+                else:
+                    logging.warning(
+                        "The output file name for the cached PDF is recommended. Using the current timestamp as the output file name."  # noqa: E501 # pylint: disable=C0301
+                    )
+                    filename = f"{time.strftime("%Y-%m-%d_%H-%M-%S")}.pdf"
+
+                shutil.copy(pdf_file, filename)
+                logging.info("PDF file copied to '%s'", filename)
+                return
+            except FileNotFoundError:
+                logging.error(
+                    "No PDF file found in the cache directory, continuing without it."  # noqa: E501 # pylint: disable=C0301
                 )
-                filename = f"{time.strftime("%Y-%m-%d_%H-%M-%S")}.pdf"
-
-            shutil.copy(pdf_file, filename)
-            logging.info("PDF file copied to '%s'", filename)
-            return
-
-        logging.warning(
-            "The cache directory search is only supported with Firefox, continuing without it."  # noqa: E501 # pylint: disable=C0301
-        )
+        else:
+            logging.warning(
+                "The cache directory search is only supported with Firefox, continuing without it."  # noqa: E501 # pylint: disable=C0301
+            )
 
     with browser_context(args) as browser:
         browser.get(args.url)
