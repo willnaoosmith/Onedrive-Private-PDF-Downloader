@@ -395,20 +395,25 @@ def main() -> None:
         logging.getLogger().setLevel(logging.DEBUG)
 
     if args.cache_dir:
-        pdf_file = find_pdf_in_cache(args.cache_dir)
-        logging.info("Found PDF file in the cache: '%s'", pdf_file)
+        if args.browser == "firefox":
+            pdf_file = find_pdf_in_cache(args.cache_dir)
+            logging.info("Found PDF file in the cache: '%s'", pdf_file)
 
-        if args.output_file:
-            filename = args.output_file
-        else:
-            logging.warning(
-                "The output file name for the cached PDF is recommended. Using the current timestamp as the output file name."  # noqa: E501 # pylint: disable=C0301
-            )
-            filename = f"{time.strftime("%Y-%m-%d_%H-%M-%S")}.pdf"
+            if args.output_file:
+                filename = args.output_file
+            else:
+                logging.warning(
+                    "The output file name for the cached PDF is recommended. Using the current timestamp as the output file name."  # noqa: E501 # pylint: disable=C0301
+                )
+                filename = f"{time.strftime("%Y-%m-%d_%H-%M-%S")}.pdf"
 
-        shutil.copy(pdf_file, filename)
-        logging.info("PDF file copied to '%s'", filename)
-        return
+            shutil.copy(pdf_file, filename)
+            logging.info("PDF file copied to '%s'", filename)
+            return
+
+        logging.warning(
+            "The cache directory search is only supported with Firefox, continuing without it."  # noqa: E501 # pylint: disable=C0301
+        )
 
     with browser_context(args) as browser:
         browser.get(args.url)
